@@ -82,4 +82,11 @@ function modify(req: Request, res: Response) {
   // });
 }
 
+function modifyOrder(modifications: any) {
+  modifications.inserted.forEach(doc => {
+    doc._id = new ObjectId(doc._id);
+
+  });
+}
+
 export { find, insert, update, deleteOne, modify };

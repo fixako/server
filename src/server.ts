@@ -40,15 +40,6 @@ passport.deserializeUser((u, done) => { done(undefined, u); });
 app.post('/login', passport.authenticate('local'), (req, res) => { res.send(req.isAuthenticated()); });
 app.post('/logout', (req, res) => { req.logout(); res.send('logged out'); });
 
-// app.all('*', (req, res, next) => {
-//   if (req.isAuthenticated()) {
-//     next();
-//     return;
-//   }
-//   res.send('not authenticated');
-// });
-
-
 app.post('/find', find);
 app.put('/insert', insert);
 app.post('/update', update);

@@ -4,7 +4,8 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "jasmine-ts \"spec/**/*.spec.ts\""
+    "test": "jasmine-ts \"spec/**/*.spec.ts\"",
+    "start": "./node_modules/.bin/ts-node ./src/server.ts"
   },
   "author": "",
   "license": "ISC",
@@ -17,11 +18,15 @@
     "@types/request-promise": "^4.1.38",
     "@types/winston": "^2.3.6",
     "body-parser": "^1.18.2",
+    "cors": "^2.8.4",
     "express": "^4.15.5",
+    "express-session": "^1.15.6",
     "passport": "^0.4.0",
     "passport-http": "^0.3.0",
+    "passport-local": "^1.0.0",
     "request": "^2.83.0",
     "request-promise": "^4.2.2",
+    "ts-node": "^3.3.0",
     "typescript": "^2.5.3",
     "winston": "^2.3.1"
   },
