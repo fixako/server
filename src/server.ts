@@ -10,7 +10,7 @@ import { Db, connect } from 'mongodb';
 
 import * as MongoClient from 'mongodb';
 
-import { find, insert, update, deleteOne, modify } from './controllers/main-controller';
+import { find, insert, update, deleteOne, modify, getNecessary } from './controllers/main-controller';
 
 const app: express.Express = express();
 let db: Db;
@@ -45,6 +45,7 @@ app.put('/insert', insert);
 app.post('/update', update);
 app.post('/modify', modify);
 app.delete('/delete', deleteOne);
+app.post('/getNecessary', getNecessary);
 
 async function start(): Promise<any> {
   db = await MongoClient.connect('mongodb://localhost:27017/test');
