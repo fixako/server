@@ -81,7 +81,7 @@ async function modify(req: Request, res: Response) {
 }
 
 async function getNecessary(req: Request, res: Response) {
-  const necessary = db.collection('productOrders').aggregate([
+  const necessary = await db.collection('productOrders').aggregate([
     { $unwind: '$products' },
     {
       $lookup:
@@ -89,8 +89,13 @@ async function getNecessary(req: Request, res: Response) {
     },
     { $unwind: '$req' }, { $unwind: '$req.requirements' },
     { $group: { _id: { name: '$name', supply: '$req.requirements.supply' }, total: { $sum: '$req.requirements.qty' } } },
-    { $group: { _id: '$_id.name', supplies: { $push: { supply: '$_id.supply', amount: '$total' } } } }
-  ]);
+    { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
+    { $project: { ordername: '$_id', required: '$supplies' } },
+  ]).toArray();
+
+  // const inventory = await db.collection();
+  console.log(necessary);
+  res.send(necessary);
 }
 
 async function preSupplyModifications(modifications: any) {
