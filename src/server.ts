@@ -16,6 +16,16 @@ const app: express.Express = express();
 let db: Db;
 let server;
 
+const logLevel = 'debug';
+winston.configure({
+  level: logLevel ? logLevel : 'warn',
+  transports: [
+      new (winston.transports.Console)({
+          prettyPrint: true
+      }),
+  ]
+});
+
 app.use(session({
   secret: 'secret',
   resave: true,
@@ -58,13 +68,12 @@ async function start(): Promise<any> {
 }
 
 function stop() {
-  console.log('server stopped');
+  winston.debug('server stopped');
   server.close();
   db.close();
 }
 
 start().then(() => {
-  console.log('server started!');
 });
 
 export { app, db, start, stop };

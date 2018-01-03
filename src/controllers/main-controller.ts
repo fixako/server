@@ -45,16 +45,8 @@ async function modify(req: Request, res: Response) {
   const collection = req.body.collection;
   const mods = req.body.modifications;
 
-  if (collection === 'orders') {
-    await preOrderModifications(mods);
-  }
-
-  if (collection === 'productOrders') {
-    await preProductOrderModifications(mods);
-  }
-
   if (collection === 'supplies') {
-    await preSupplyModifications(mods);
+    // await preSupplyModifications(mods);
   }
 
   mods.inserted.forEach(doc => {
@@ -70,37 +62,18 @@ async function modify(req: Request, res: Response) {
     db.collection(collection).update({ _id: id }, { $set: doc }).then(response => {
       res.send(response);
     });
+  });
 
-    mods.deleted.forEach(doc => {
-      const id = new ObjectId(doc._id);
-      db.collection(collection).deleteOne({ _id: id });
+  mods.deleted.forEach(doc => {
+    const id = new ObjectId(doc._id);
+    db.collection(collection).deleteOne({ _id: id }).then(response => {
+      res.send(response);
     });
-
   });
 
 }
 
-async function getNecessary(req: Request, res: Response) {
-  const necessary = await db.collection('productOrders').aggregate([
-    { $unwind: '$products' },
-    {
-      $lookup:
-      { from: 'products', localField: 'products.product', foreignField: 'name', as: 'req' }
-    },
-    { $unwind: '$req' }, { $unwind: '$req.requirements' },
-    { $group: { _id: { name: '$name', supply: '$req.requirements.supply' }, total: { $sum: '$req.requirements.qty' } } },
-    { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
-    { $project: { ordername: '$_id', required: '$supplies' } },
-  ]).toArray();
-
-  // const inventory = await db.collection();
-  console.log(necessary);
-  res.send(necessary);
-}
-
 async function preSupplyModifications(modifications: any) {
-  const insertedAndUpdated = concat(modifications.inserted, modifications.updated);
-
   modifications.updated.forEach(async doc => {
     const before = await db.collection('supplies').findOne({ _id: new ObjectId(doc._id) });
     const filter: any = { arrayFilters: [{ 'qty.qty': { $lt: 22 } }] };
@@ -114,7 +87,7 @@ async function preSupplyModifications(modifications: any) {
         }
         db.collection('orders').update(
           { _id: order._id },
-          { $set: { supplies: order.supplies } }
+          { $set: { 'supply.name': doc.name } }
         );
       });
 
@@ -128,67 +101,32 @@ async function preSupplyModifications(modifications: any) {
       { multi: true }
     );
   });
-
   return;
 }
 
-async function preOrderModifications(modifications: any) {
-  const insertedAndUpdated = concat(modifications.inserted, modifications.updated);
+async function getNecessary(req: Request, res: Response) {
+  // const necessary = await db.collection('productOrders').aggregate([
+  //   { $unwind: '$products' },
+  //   {
+  //     $lookup:
+  //       { from: 'products', localField: 'products.product', foreignField: 'name', as: 'req' }
+  //   },
+  //   { $unwind: '$req' }, { $unwind: '$req.requirements' },
+  //   { $group: { _id: { name: '$name', supply: '$req.requirements.supply' }, total: { $sum: '$req.requirements.qty' } } },
+  //   { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
+  //   { $project: { ordername: '$_id', required: '$supplies' } },
+  // ]).toArray();
 
-  insertedAndUpdated.forEach(async doc => {
-    const initial = await db.collection('orders').findOne({ _id: new ObjectId(doc._id) });
-
-    let modifiedSupplies = [];
-    if (initial !== null) {
-      initial.supplies.forEach(supply => { modifiedSupplies.push({ name: supply.name, qty: supply.arrived }); });
-      updateInventory(modifiedSupplies, -1);
-    }
-
-    modifiedSupplies = [];
-
-    doc.supplies.forEach(supply => { modifiedSupplies.push({ name: supply.name, qty: supply.arrived }); });
-    updateInventory(modifiedSupplies, 1);
-  });
-
-  return;
+  const necessary = await db.collection('productOrders').aggregate([
+    { $unwind: '$products' }, { $lookup:  { from: 'products', localField: 'products.product', foreignField: 'name', as: 'req' }  }, 
+    { $unwind: '$req' }, { $unwind: '$req.requirements' },
+    { $project: { name: 1, total: { $multiply: [ '$products.qty', '$req.requirements.qty' ]  }, supply: '$req.requirements.supply' } }, 
+    { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' }}},
+    { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
+    { $project: { ordername: '$_id', required: '$supplies' } } ]).toArray();
+  // const inventory = await db.collection('supplies').find().toArray();
+  console.log(necessary);
+  res.send(necessary);
 }
-
-async function preProductOrderModifications(modifications: any) {
-  const insertedAndUpdated = concat(modifications.inserted, modifications.updated);
-
-  insertedAndUpdated.forEach(async doc => {
-    const initial = await db.collection('productOrders').findOne({ _id: new ObjectId(doc._id) });
-
-    if (initial !== null) {
-      await updateInventoryByProducts(initial.products, -1);
-    }
-
-    await updateInventoryByProducts(doc.products, 1);
-  });
-
-  return;
-}
-
-
-async function updateInventory(supplies, multiplier) {
-  supplies.forEach(element => {
-    element.qty = element.qty * multiplier;
-    db.collection('supplies').update(
-      { name: element.name },
-      { $inc: { qty: element.qty } }
-    );
-  });
-}
-
-async function updateInventoryByProducts(products, multiplier) {
-  const modifiedSupplies = [];
-
-  products.forEach(async product => {
-    const prod = await db.collection('products').findOne({ name: product.product });
-    prod.requirements.forEach(element => { modifiedSupplies.push({ name: element.supply, qty: element.qty }); });
-    updateInventory(modifiedSupplies, multiplier * product.finished);
-  });
-}
-
 
 export { find, insert, update, deleteOne, modify, getNecessary };
