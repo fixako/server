@@ -58,12 +58,8 @@ app.delete('/delete', deleteOne);
 app.post('/getNecessary', getNecessary);
 
 async function start(): Promise<any> {
-  db = await MongoClient.connect('mongodb://localhost:27017/test');
-
-  await new Promise((resolve) => {
-    setTimeout(() => { winston.silly('timed out'); resolve(); }, 0);
-  });
-
+  const client = await MongoClient.connect('mongodb://localhost:27017/');
+  db = client.db('test');
   server = app.listen(3000, () => { winston.debug('Server started on port 3000!'); });
 }
 

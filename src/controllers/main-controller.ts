@@ -105,27 +105,27 @@ async function preSupplyModifications(modifications: any) {
 }
 
 async function getNecessary(req: Request, res: Response) {
-  // const necessary = await db.collection('productOrders').aggregate([
-  //   { $unwind: '$products' },
-  //   {
-  //     $lookup:
-  //       { from: 'products', localField: 'products.product', foreignField: 'name', as: 'req' }
-  //   },
-  //   { $unwind: '$req' }, { $unwind: '$req.requirements' },
-  //   { $group: { _id: { name: '$name', supply: '$req.requirements.supply' }, total: { $sum: '$req.requirements.qty' } } },
-  //   { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
-  //   { $project: { ordername: '$_id', required: '$supplies' } },
-  // ]).toArray();
-
   const necessary = await db.collection('productOrders').aggregate([
-    { $unwind: '$products' }, { $lookup:  { from: 'products', localField: 'products.product', foreignField: 'name', as: 'req' }  }, 
-    { $unwind: '$req' }, { $unwind: '$req.requirements' },
-    { $project: { name: 1, total: { $multiply: [ '$products.qty', '$req.requirements.qty' ]  }, supply: '$req.requirements.supply' } }, 
-    { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' }}},
+    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.product', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$necessary' }, { $unwind: '$necessary.necessary' },
+    { $project: { name: 1, total: { $multiply: ['$products.qty', '$necessary.necessary.qty'] }, supply: '$necessary.necessary.name' } },
+    { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' } } },
     { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
-    { $project: { ordername: '$_id', required: '$supplies' } } ]).toArray();
-  // const inventory = await db.collection('supplies').find().toArray();
-  console.log(necessary);
+    { $project: { ordername: '$_id', required: '$supplies' } }]).toArray();
+
+  const inventory = await db.collection('supplies').find().toArray();
+
+  necessary.forEach(element => {
+    element.required.forEach(elem => {
+      inventory.forEach(el => {
+        if (elem.name === el.name) {
+          elem.qty -= el.qty;
+          return;
+        }
+      });
+    });
+  });
+
   res.send(necessary);
 }
 
