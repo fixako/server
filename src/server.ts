@@ -1,5 +1,7 @@
 import * as express from 'express';
 import * as session from 'express-session';
+const MongoStore = require('connect-mongo')(session);
+import * as cookieParser from 'cookie-parser';
 import * as bodyParser from 'body-parser';
 import * as winston from 'winston';
 import * as cors from 'cors';
@@ -20,35 +22,39 @@ const logLevel = 'debug';
 winston.configure({
   level: logLevel ? logLevel : 'warn',
   transports: [
-      new (winston.transports.Console)({
-          prettyPrint: true
-      }),
+    new (winston.transports.Console)({
+      prettyPrint: true
+    }),
   ]
 });
 
-app.use(session({
-  secret: 'secret',
-  resave: true,
-  saveUninitialized: true
-}));
-app.use(bodyParser.json());
 app.use(cors());
-app.use(passport.initialize());
-app.use(passport.session());
-passport.use(new LocalStrategy(
-  (username, password, done) => {
-    if (username === 'test' && password === 'test') {
-      return done(undefined, { username: 'test', password: 'test' });
-    } else {
-      return done(undefined, false);
-    }
-  }
-));
-passport.serializeUser((u, done) => { done(undefined, u); });
-passport.deserializeUser((u, done) => { done(undefined, u); });
+app.use(bodyParser.json());
 
-app.post('/login', passport.authenticate('local'), (req, res) => { res.send(req.isAuthenticated()); });
-app.post('/logout', (req, res) => { req.logout(); res.send('logged out'); });
+// app.use(cookieParser());
+// app.use(session({ secret: 'secret', resave: true, saveUninitialized: true, cookie: { maxAge: 60000 } }));
+
+// app.post('/login', (req, res) => {
+//   if (req.body.username === 'test' && req.body.password === 'test') {
+//     req.session.username = 'test';
+//     res.send('login successfull');
+//   } else {
+//     res.send('incorrect username or password');
+//   }
+// });
+
+// app.post('/logout', (req, res) => {
+//   req.session.username = undefined;
+//   res.send('logged out successfully ' + req.cookies.username);
+// });
+
+// app.all('*', function (req, res, next) {
+//   winston.debug('should not be undefined ' + req.session.username);
+//   if (req.session.username !== undefined) {
+//     next();
+//   }
+//   res.send('username = ' + req.session.username);
+// });
 
 app.post('/find', find);
 app.put('/insert', insert);

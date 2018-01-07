@@ -8,6 +8,43 @@ import { db } from '../server';
 function find(req: Request, res: Response) {
   winston.debug('/find called');
 
+  switch (req.body.collection) {
+    case 'supplies':
+      db.collection(req.body.collection).find(
+        req.body.filter,
+        req.body.projection ? req.body.projection : {}
+      ).sort({ name: 1 }).toArray().then(result => {
+        res.send(result);
+      });
+      return;
+    case 'products':
+      db.collection(req.body.collection).find(
+        req.body.filter,
+        req.body.projection ? req.body.projection : {}
+      ).sort({ name: 1 }).toArray().then(result => {
+        res.send(result);
+      });
+      return;
+    case 'supplyOrders':
+      db.collection(req.body.collection).find(
+        req.body.filter,
+        req.body.projection ? req.body.projection : {}
+      ).sort({ arrivalDate: -1 }).toArray().then(result => {
+        res.send(result);
+      });
+      return;
+    case 'productOrders':
+      db.collection(req.body.collection).find(
+        req.body.filter,
+        req.body.projection ? req.body.projection : {}
+      ).sort({ deadline: -1 }).toArray().then(result => {
+        res.send(result);
+      });
+      return;
+    default:
+      break;
+  }
+
   db.collection(req.body.collection).find(
     req.body.filter,
     req.body.projection ? req.body.projection : {}
