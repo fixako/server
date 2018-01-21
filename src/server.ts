@@ -1,5 +1,6 @@
 import * as express from 'express';
 import * as session from 'express-session';
+const RedisStore = require('connect-redis')(session);
 const MongoStore = require('connect-mongo')(session);
 import * as cookieParser from 'cookie-parser';
 import * as bodyParser from 'body-parser';
@@ -12,7 +13,7 @@ import { Db, connect } from 'mongodb';
 
 import * as MongoClient from 'mongodb';
 
-import { find, insert, update, deleteOne, modify, getNecessary } from './controllers/main-controller';
+import { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV } from './controllers/main-controller';
 
 const app: express.Express = express();
 let db: Db;
@@ -28,33 +29,43 @@ winston.configure({
   ]
 });
 
-app.use(cors());
+app.use(cors({origin: [
+  'http://localhost:4200'
+], credentials: true}));
 app.use(bodyParser.json());
+app.set('trust proxy', 1);
 
-// app.use(cookieParser());
-// app.use(session({ secret: 'secret', resave: true, saveUninitialized: true, cookie: { maxAge: 60000 } }));
+app.use(session({
+  store: new MongoStore({ url: 'mongodb://localhost:27017/test' }),
+  secret: 'secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
 
-// app.post('/login', (req, res) => {
-//   if (req.body.username === 'test' && req.body.password === 'test') {
-//     req.session.username = 'test';
-//     res.send('login successfull');
-//   } else {
-//     res.send('incorrect username or password');
-//   }
-// });
+app.post('/login', (req, res) => {
+  if (req.body.username === 'test' && req.body.password === 'test') {
+    req.session.username = 'test';
+    res.send(true);
+  } else {
+    res.send(false);
+  }
+});
 
-// app.post('/logout', (req, res) => {
-//   req.session.username = undefined;
-//   res.send('logged out successfully ' + req.cookies.username);
-// });
+app.post('/logout', (req, res) => {
+  req.session.destroy(function (err) {
+    res.send('logged out successfully');
+  });
+});
 
-// app.all('*', function (req, res, next) {
-//   winston.debug('should not be undefined ' + req.session.username);
-//   if (req.session.username !== undefined) {
-//     next();
-//   }
-//   res.send('username = ' + req.session.username);
-// });
+app.all('*', function (req, res, next) {
+  winston.debug('should not be undefined ' + req.session.username);
+  if (req.session.username !== undefined) {
+    next();
+  } else {
+    res.send([]);
+  }
+});
 
 app.post('/find', find);
 app.put('/insert', insert);
@@ -62,6 +73,7 @@ app.post('/update', update);
 app.post('/modify', modify);
 app.delete('/delete', deleteOne);
 app.post('/getNecessary', getNecessary);
+app.post('/getNecessaryAsCSV', getNecessaryAsCSV);
 
 async function start(): Promise<any> {
   const client = await MongoClient.connect('mongodb://localhost:27017/');

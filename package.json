@@ -2,10 +2,10 @@
   "name": "tsapp",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js",
+  "main": "index.js",
   "scripts": {
     "test": "jasmine-ts \"spec/**/*.spec.ts\"",
-    "start": "./node_modules/.bin/ts-node ./src/server.ts"
+    "start": "./node_modules/.bin/ts-node ./src/index.ts"
   },
   "author": "",
   "license": "ISC",
@@ -19,6 +19,7 @@
     "@types/winston": "^2.3.6",
     "body-parser": "^1.18.2",
     "connect-mongo": "^2.0.1",
+    "connect-redis": "^3.3.3",
     "cookie-parser": "^1.4.3",
     "cors": "^2.8.4",
     "express": "^4.15.5",

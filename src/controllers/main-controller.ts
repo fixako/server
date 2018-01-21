@@ -166,4 +166,26 @@ async function getNecessary(req: Request, res: Response) {
   res.send(necessary);
 }
 
-export { find, insert, update, deleteOne, modify, getNecessary };
+async function getNecessaryAsCSV(req: Request, res: Response) {
+  const necessary = (await db.collection('productOrders').aggregate([
+    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.product', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$necessary' }, { $unwind: '$necessary.necessary' },
+    { $project: { name: 1, total: { $multiply: ['$products.qty', '$necessary.necessary.qty'] }, supply: '$necessary.necessary.name' } },
+    { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' } } },
+    { $group: { _id: '$_id.name', supplies: { $push: { name: '$_id.supply', qty: '$total' } } } },
+    { $project: { ordername: '$_id', required: '$supplies' } },
+    { $match: { ordername: req.body.selectedProductOrder } }
+  ]).toArray())[0];
+
+  let necessaryAsCSV = 'Supply Name, Amount available \n';
+
+  if (necessary) {
+    necessary.required.forEach(element => {
+      necessaryAsCSV += element.name + ', ' + element.qty + '\n';
+    });
+  }
+
+  res.send(necessaryAsCSV);
+}
+
+export { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV };
