@@ -41,6 +41,14 @@ function find(req: Request, res: Response) {
         res.send(result);
       });
       return;
+    case 'machines':
+      db.collection(req.body.collection).find(
+        req.body.filter,
+        req.body.projection ? req.body.projection : {}
+      ).sort({ name: 1 }).toArray().then(result => {
+        res.send(result);
+      });
+      return;
     default:
       break;
   }
@@ -156,7 +164,7 @@ async function getNecessary(req: Request, res: Response) {
     element.required.forEach(elem => {
       inventory.forEach(el => {
         if (elem.name === el.name) {
-          elem.qty -= el.qty;
+          elem.qty = el.qty - elem.qty;
           return;
         }
       });
@@ -177,6 +185,19 @@ async function getNecessaryAsCSV(req: Request, res: Response) {
     { $match: { ordername: req.body.selectedProductOrder } }
   ]).toArray())[0];
 
+  const inventory = await db.collection('supplies').find().toArray();
+
+  console.log(necessary);
+
+  necessary.required.forEach(elem => {
+    inventory.forEach(el => {
+      if (elem.name === el.name) {
+        elem.qty = el.qty - elem.qty;
+        return;
+      }
+    });
+  });
+
   let necessaryAsCSV = 'Supply Name, Amount available \n';
 
   if (necessary) {
@@ -184,6 +205,8 @@ async function getNecessaryAsCSV(req: Request, res: Response) {
       necessaryAsCSV += element.name + ', ' + element.qty + '\n';
     });
   }
+
+  console.log(necessaryAsCSV);
 
   res.send(necessaryAsCSV);
 }

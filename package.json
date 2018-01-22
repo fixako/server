@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jasmine-ts \"spec/**/*.spec.ts\"",
-    "start": "./node_modules/.bin/ts-node ./src/index.ts"
+    "start": "./node_modules/.bin/ts-node ./src/server.ts"
   },
   "author": "",
   "license": "ISC",
