@@ -13,7 +13,7 @@ import { Db, connect } from 'mongodb';
 
 import * as MongoClient from 'mongodb';
 
-import { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV } from './controllers/main-controller';
+import { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV, getMachineNecessary, getPrice } from './controllers/main-controller';
 
 const app: express.Express = express();
 let db: Db;
@@ -74,6 +74,8 @@ app.post('/modify', modify);
 app.delete('/delete', deleteOne);
 app.post('/getNecessary', getNecessary);
 app.post('/getNecessaryAsCSV', getNecessaryAsCSV);
+app.post('/getMachineNecessary', getMachineNecessary);
+app.post('/getPrice', getPrice);
 
 async function start(): Promise<any> {
   const client = await MongoClient.connect('mongodb://localhost:27017/');

@@ -151,7 +151,7 @@ async function preSupplyModifications(modifications: any) {
 
 async function getNecessary(req: Request, res: Response) {
   const necessary = await db.collection('productOrders').aggregate([
-    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.product', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.name', foreignField: 'name', as: 'necessary' } },
     { $unwind: '$necessary' }, { $unwind: '$necessary.necessary' },
     { $project: { name: 1, total: { $multiply: ['$products.qty', '$necessary.necessary.qty'] }, supply: '$necessary.necessary.name' } },
     { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' } } },
@@ -174,9 +174,10 @@ async function getNecessary(req: Request, res: Response) {
   res.send(necessary);
 }
 
+
 async function getNecessaryAsCSV(req: Request, res: Response) {
   const necessary = (await db.collection('productOrders').aggregate([
-    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.product', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.name', foreignField: 'name', as: 'necessary' } },
     { $unwind: '$necessary' }, { $unwind: '$necessary.necessary' },
     { $project: { name: 1, total: { $multiply: ['$products.qty', '$necessary.necessary.qty'] }, supply: '$necessary.necessary.name' } },
     { $group: { _id: { name: '$name', supply: '$supply' }, total: { $sum: '$total' } } },
@@ -211,4 +212,58 @@ async function getNecessaryAsCSV(req: Request, res: Response) {
   res.send(necessaryAsCSV);
 }
 
-export { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV };
+async function getMachineNecessary(req: Request, res: Response) {
+  const machineNecessary = await db.collection('productOrders').aggregate([
+    { $unwind: '$products' }, { $lookup: { from: 'products', localField: 'products.name', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$necessary' }, { $unwind: '$necessary.phases' },
+    { $project: { name: 1, total: { $multiply: ['$products.qty', '$necessary.phases.time'] }, machine: '$necessary.phases.machineName' } },
+    { $group: { _id: { name: '$name', machine: '$machine' }, total: { $sum: '$total' } } },
+    { $group: { _id: '$_id.name', machines: { $push: { name: '$_id.machine', qty: { $divide: ['$total', 3600] } } } } },
+    { $project: { ordername: '$_id', required: '$machines' } }]).toArray();
+
+  machineNecessary.forEach(element => {
+    element.required.forEach(elem => {
+      elem.qty = elem.qty.toFixed(4);
+    });
+  });
+
+  res.send(machineNecessary);
+}
+
+async function getPrice(req: Request, res: Response) {
+  const supplyPrice = await db.collection('productOrders').aggregate([
+    { $unwind: '$products' },
+    { $lookup: { from: 'products', localField: 'products.name', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$necessary' }, { $unwind: '$necessary.necessary' },
+    { $lookup: { from: 'supplies', localField: 'necessary.necessary.name', foreignField: 'name', as: 'supply' } },
+    { $unwind: '$supply' },
+    { $project: { name: 1, supplyPrice: { $multiply: ['$products.qty', '$necessary.necessary.qty', '$supply.price'] } } },
+    { $group: { _id: { name: '$name' }, supplyPrice: { $sum: '$supplyPrice' } } },
+    { $project: { _id: 0, ordername: '$_id.name', supplyPrice: 1 } }]).toArray();
+
+  const machinePrice = await db.collection('productOrders').aggregate([
+    { $unwind: '$products' },
+    { $lookup: { from: 'products', localField: 'products.name', foreignField: 'name', as: 'necessary' } },
+    { $unwind: '$necessary' }, { $unwind: '$necessary.phases' },
+    { $lookup: { from: 'machines', localField: 'necessary.phases.machineName', foreignField: 'name', as: 'machines' } },
+    { $unwind: '$machines' },
+    { $project: { name: 1, machines: 1, machinePrice: { $multiply: ['$products.qty', '$necessary.phases.time'] } } },
+    { $group: { _id: { name: '$name' }, machinePrice: { $sum: { $multiply: ['$machines.price', { $divide: ['$machinePrice', 3600] }] } } } },
+    { $project: { _id: 0, ordername: '$_id.name', machinePrice: 1 } }
+  ]).toArray();
+
+
+  supplyPrice.forEach(element => {
+    machinePrice.forEach(elem => {
+      if (element.ordername === elem.ordername) {
+        element.machinePrice = elem.machinePrice;
+        element.total = elem.machinePrice + element.supplyPrice;
+        return;
+      }
+    });
+  });
+
+  res.send(supplyPrice);
+}
+
+export { find, insert, update, deleteOne, modify, getNecessary, getNecessaryAsCSV, getMachineNecessary, getPrice };
